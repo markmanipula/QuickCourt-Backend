@@ -6,7 +6,8 @@ interface IEvent extends Document {
     date: Date;
     cost: number;
     maxParticipants: number;
-    participants: string[]; // Array of userIds
+    participants: string[]; // Array of userIds,
+    details: string;
 }
 
 const eventSchema: Schema<IEvent> = new Schema({
@@ -15,7 +16,9 @@ const eventSchema: Schema<IEvent> = new Schema({
     date: { type: Date, required: true },
     cost: { type: Number, default: 0 },
     maxParticipants: { type: Number, required: true },
-    participants: { type: [String], default: [] }
+    participants: { type: [String], default: [] },
+    details: { type: String, default: "" },
+
 });
 
 const Event = mongoose.model<IEvent>('Event', eventSchema);
