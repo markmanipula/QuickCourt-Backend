@@ -5,9 +5,9 @@ const router = express.Router();
 
 // Create Event
 router.post('/', async (req: Request, res: Response) => {
-    const { title, location, date, cost, maxParticipants, details } = req.body;
+    const { title, organizer, location, date, cost, maxParticipants, details } = req.body;
     try {
-        const newEvent = new Event({ title, location, date, cost, maxParticipants, details});
+        const newEvent = new Event({ title, organizer, location, date, cost, maxParticipants, details});
         await newEvent.save();
         res.status(201).json(newEvent);
     } catch (error) {
