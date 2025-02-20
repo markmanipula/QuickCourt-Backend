@@ -42,6 +42,10 @@ router.post('/:id/join', async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Event not found' });
         }
 
+        if (event.participants.includes(participant)) {
+            return res.status(400).json({ error: 'You are already a participant' });
+        }
+
         // Check if the event is full
         if (event.participants.length >= event.maxParticipants) {
             return res.status(400).json({ error: 'Event is full' });
@@ -52,9 +56,6 @@ router.post('/:id/join', async (req: Request, res: Response) => {
             event.participants.push(participant);
             await event.save();
             return res.status(200).json({ message: 'Joined event successfully', event });
-        } else {
-            console.log("'You are already a participant'");
-            return res.status(400).json({ error: 'You are already a participant' });
         }
 
     } catch (error) {
