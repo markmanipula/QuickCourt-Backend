@@ -26,6 +26,44 @@ router.post('/', async (req: Request, res: Response) => {
     }
 });
 
+// Join Event
+// @ts-ignore
+router.post('/:id/join', async (req: Request, res: Response) => {
+    const { id } = req.params; // Event ID
+    const { participant } = req.body; // Participant info (e.g., user ID or name)
+
+    try {
+        // Find the event by ID
+        const event = await Event.findById(id);
+
+        console.log('participant', participant);
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        // Check if the event is full
+        if (event.participants.length >= event.maxParticipants) {
+            return res.status(400).json({ error: 'Event is full' });
+        }
+
+        // Add the participant if not already in the list
+        if (!event.participants.includes(participant)) {
+            event.participants.push(participant);
+            await event.save();
+            return res.status(200).json({ message: 'Joined event successfully', event });
+        } else {
+            console.log("'You are already a participant'");
+            return res.status(400).json({ error: 'You are already a participant' });
+        }
+
+    } catch (error) {
+        console.log(error);
+        console.error(error);
+        res.status(400).json({ error: 'Error joining event' });
+    }
+});
+
 // Get all Events
 router.get('/', async (req: Request, res: Response) => {
     try {
