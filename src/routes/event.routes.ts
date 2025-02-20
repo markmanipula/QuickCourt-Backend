@@ -5,9 +5,20 @@ const router = express.Router();
 
 // Create Event
 router.post('/', async (req: Request, res: Response) => {
-    const { title, organizer, location, date, cost, maxParticipants, details } = req.body;
+    const { title, organizer, location, date, time, cost, maxParticipants, details } = req.body;
     try {
-        const newEvent = new Event({ title, organizer, location, date, cost, maxParticipants, details});
+        const newEvent = new Event({
+            title,
+            organizer,
+            location,
+            date,
+            time,
+            cost,
+            maxParticipants,
+            details,
+            participants: [organizer], // Initialize participants array with the organizer
+        });
+
         await newEvent.save();
         res.status(201).json(newEvent);
     } catch (error) {
