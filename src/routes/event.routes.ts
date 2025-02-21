@@ -65,6 +65,36 @@ router.post('/:id/join', async (req: Request, res: Response) => {
     }
 });
 
+// Leave Event
+// @ts-ignore
+router.post('/:id/leave', async (req: Request, res: Response) => {
+    const { id } = req.params; // Event ID
+    const { participant } = req.body; // Participant info (e.g., user ID or name)
+
+    try {
+        // Find the event by ID
+        const event = await Event.findById(id);
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        if (!event.participants.includes(participant)) {
+            return res.status(400).json({ error: 'You are not a participant in this event' });
+        }
+
+        // Remove the participant
+        event.participants = event.participants.filter(p => p !== participant);
+        await event.save();
+
+        return res.status(200).json({ message: 'Left event successfully', event });
+
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({ error: 'Error leaving event' });
+    }
+});
+
 // Get all Events
 router.get('/', async (req: Request, res: Response) => {
     try {
