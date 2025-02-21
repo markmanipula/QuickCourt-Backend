@@ -120,4 +120,38 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 });
 
+// Edit Event
+// @ts-ignore
+router.put('/:id', async (req: Request, res: Response) => {
+    const { id } = req.params; // Event ID
+    const { title, organizer, location, date, time, cost, maxParticipants, details } = req.body;
+
+    try {
+        // Find the event by ID
+        const event = await Event.findById(id);
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        // Update event properties
+        event.title = title || event.title;
+        event.organizer = organizer || event.organizer;
+        event.location = location || event.location;
+        event.date = date || event.date;
+        event.time = time || event.time;
+        event.cost = cost || event.cost;
+        event.maxParticipants = maxParticipants || event.maxParticipants;
+        event.details = details || event.details;
+
+        // Save the updated event
+        await event.save();
+
+        res.status(200).json(event);
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({ error: 'Error updating event' });
+    }
+});
+
 export default router;
