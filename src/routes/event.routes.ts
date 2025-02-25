@@ -154,4 +154,23 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 });
 
+// Delete Event
+// @ts-ignore
+router.delete('/:id', async (req: Request, res: Response) => {
+    const { id } = req.params;
+
+    try {
+        const event = await Event.findByIdAndDelete(id);
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        res.status(200).json({ message: 'Event deleted successfully', event });
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({ error: 'Error deleting event' });
+    }
+});
+
 export default router;
