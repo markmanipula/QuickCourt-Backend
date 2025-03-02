@@ -5,7 +5,7 @@ const router = express.Router();
 
 // Create Event
 router.post('/', async (req: Request, res: Response) => {
-    const { title, organizer, location, date, time, cost, maxParticipants, details } = req.body;
+    const { title, organizer, location, date, time, cost, maxParticipants, details, visibility } = req.body;
     try {
         const newEvent = new Event({
             title,
@@ -17,6 +17,7 @@ router.post('/', async (req: Request, res: Response) => {
             maxParticipants,
             details,
             participants: [organizer], // Initialize participants array with the organizer
+            visibility: visibility || 'public', // Default to public if not provided
         });
 
         await newEvent.save();
@@ -29,37 +30,34 @@ router.post('/', async (req: Request, res: Response) => {
 // Join Event
 // @ts-ignore
 router.post('/:id/join', async (req: Request, res: Response) => {
-    const { id } = req.params; // Event ID
-    const { participant } = req.body; // Participant info (e.g., user ID or name)
+    const { id } = req.params;
+    const { participant } = req.body;
 
     try {
-        // Find the event by ID
         const event = await Event.findById(id);
-
-        console.log('participant', participant);
 
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
+        }
+
+        if (event.visibility === 'invite-only') {
+            return res.status(403).json({ error: 'This event is invite-only. You cannot join without an invite.' });
         }
 
         if (event.participants.includes(participant)) {
             return res.status(400).json({ error: 'You are already a participant' });
         }
 
-        // Check if the event is full
         if (event.participants.length >= event.maxParticipants) {
             return res.status(400).json({ error: 'Event is full' });
         }
 
-        // Add the participant if not already in the list
-        if (!event.participants.includes(participant)) {
-            event.participants.push(participant);
-            await event.save();
-            return res.status(200).json({ message: 'Joined event successfully', event });
-        }
+        event.participants.push(participant);
+        await event.save();
+
+        res.status(200).json({ message: 'Joined event successfully', event });
 
     } catch (error) {
-        console.log(error);
         console.error(error);
         res.status(400).json({ error: 'Error joining event' });
     }
@@ -123,18 +121,16 @@ router.get('/:id', async (req: Request, res: Response) => {
 // Edit Event
 // @ts-ignore
 router.put('/:id', async (req: Request, res: Response) => {
-    const { id } = req.params; // Event ID
-    const { title, organizer, location, date, time, cost, maxParticipants, details } = req.body;
+    const { id } = req.params;
+    const { title, organizer, location, date, time, cost, maxParticipants, details, visibility } = req.body;
 
     try {
-        // Find the event by ID
         const event = await Event.findById(id);
 
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        // Update event properties
         event.title = title || event.title;
         event.organizer = organizer || event.organizer;
         event.location = location || event.location;
@@ -143,8 +139,8 @@ router.put('/:id', async (req: Request, res: Response) => {
         event.cost = cost || event.cost;
         event.maxParticipants = maxParticipants || event.maxParticipants;
         event.details = details || event.details;
+        event.visibility = visibility || event.visibility; // Allow updating visibility
 
-        // Save the updated event
         await event.save();
 
         res.status(200).json(event);
