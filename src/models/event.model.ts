@@ -10,7 +10,8 @@ interface IEvent extends Document {
     maxParticipants: number;
     participants: string[]; // Array of userIds
     details: string;
-    visibility: 'public' | 'invite-only'; // New field for event visibility
+    visibility: 'public' | 'invite-only';
+    passcode?: string; // Passcode only for invite-only events
 }
 
 const eventSchema: Schema<IEvent> = new Schema({
@@ -23,7 +24,8 @@ const eventSchema: Schema<IEvent> = new Schema({
     maxParticipants: { type: Number, required: true },
     participants: { type: [String], default: [] },
     details: { type: String, default: "" },
-    visibility: { type: String, enum: ['public', 'invite-only'], default: 'public', required: true } // Added field
+    visibility: { type: String, enum: ['public', 'invite-only'], default: 'public', required: true },
+    passcode: { type: String, default: null } // Only applies if visibility = 'invite-only'
 });
 
 const Event = mongoose.model<IEvent>('Event', eventSchema);

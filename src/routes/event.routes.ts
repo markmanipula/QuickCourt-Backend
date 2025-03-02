@@ -3,9 +3,17 @@ import Event from '../models/event.model';
 
 const router = express.Router();
 
+/**
+ * Utility function to generate a 4-digit passcode
+ */
+const generatePasscode = (): string => {
+    return Math.floor(1000 + Math.random() * 9000).toString(); // 4-digit number
+};
+
 // Create Event
 router.post('/', async (req: Request, res: Response) => {
     const { title, organizer, location, date, time, cost, maxParticipants, details, visibility } = req.body;
+
     try {
         const newEvent = new Event({
             title,
@@ -17,7 +25,8 @@ router.post('/', async (req: Request, res: Response) => {
             maxParticipants,
             details,
             participants: [organizer], // Initialize participants array with the organizer
-            visibility: visibility || 'public', // Default to public if not provided
+            visibility: visibility || 'public',
+            passcode: visibility === 'invite-only' ? generatePasscode() : undefined // Generate passcode if invite-only
         });
 
         await newEvent.save();
@@ -27,12 +36,12 @@ router.post('/', async (req: Request, res: Response) => {
     }
 });
 
-// Join Event
+// Join Event (With Passcode for Invite-Only Events)
 // @ts-ignore
 router.post('/:id/join', async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { participant } = req.body;
-
+    const { participant, passcode } = req.body; // Passcode required for invite-only events
+    console.log('Request body:', req.body); // Log incoming request body
     try {
         const event = await Event.findById(id);
 
@@ -41,7 +50,13 @@ router.post('/:id/join', async (req: Request, res: Response) => {
         }
 
         if (event.visibility === 'invite-only') {
-            return res.status(403).json({ error: 'This event is invite-only. You cannot join without an invite.' });
+            if (!passcode) {
+                return res.status(403).json({ error: 'Passcode required to join this event' });
+            }
+
+            if (passcode !== event.passcode) {
+                return res.status(403).json({ error: 'Invalid passcode' });
+            }
         }
 
         if (event.participants.includes(participant)) {
@@ -63,33 +78,45 @@ router.post('/:id/join', async (req: Request, res: Response) => {
     }
 });
 
-// Leave Event
+// Edit Event (Handles visibility and passcode updates)
 // @ts-ignore
-router.post('/:id/leave', async (req: Request, res: Response) => {
-    const { id } = req.params; // Event ID
-    const { participant } = req.body; // Participant info (e.g., user ID or name)
+router.put('/:id', async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const { title, organizer, location, date, time, cost, maxParticipants, details, visibility } = req.body;
 
     try {
-        // Find the event by ID
         const event = await Event.findById(id);
 
         if (!event) {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        if (!event.participants.includes(participant)) {
-            return res.status(400).json({ error: 'You are not a participant in this event' });
+        // If changing from public → invite-only, generate a passcode
+        if (visibility === 'invite-only' && event.visibility === 'public') {
+            event.passcode = generatePasscode();
         }
 
-        // Remove the participant
-        event.participants = event.participants.filter(p => p !== participant);
+        // If changing from invite-only → public, remove the passcode
+        if (visibility === 'public' && event.visibility === 'invite-only') {
+            event.passcode = undefined;
+        }
+
+        event.title = title || event.title;
+        event.organizer = organizer || event.organizer;
+        event.location = location || event.location;
+        event.date = date || event.date;
+        event.time = time || event.time;
+        event.cost = cost || event.cost;
+        event.maxParticipants = maxParticipants || event.maxParticipants;
+        event.details = details || event.details;
+        event.visibility = visibility || event.visibility;
+
         await event.save();
 
-        return res.status(200).json({ message: 'Left event successfully', event });
-
+        res.status(200).json(event);
     } catch (error) {
         console.error(error);
-        res.status(400).json({ error: 'Error leaving event' });
+        res.status(400).json({ error: 'Error updating event' });
     }
 });
 
@@ -118,11 +145,11 @@ router.get('/:id', async (req: Request, res: Response) => {
     }
 });
 
-// Edit Event
+// Leave Event
 // @ts-ignore
-router.put('/:id', async (req: Request, res: Response) => {
+router.post('/:id/leave', async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { title, organizer, location, date, time, cost, maxParticipants, details, visibility } = req.body;
+    const { participant } = req.body;
 
     try {
         const event = await Event.findById(id);
@@ -131,22 +158,18 @@ router.put('/:id', async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        event.title = title || event.title;
-        event.organizer = organizer || event.organizer;
-        event.location = location || event.location;
-        event.date = date || event.date;
-        event.time = time || event.time;
-        event.cost = cost || event.cost;
-        event.maxParticipants = maxParticipants || event.maxParticipants;
-        event.details = details || event.details;
-        event.visibility = visibility || event.visibility; // Allow updating visibility
+        if (!event.participants.includes(participant)) {
+            return res.status(400).json({ error: 'You are not a participant in this event' });
+        }
 
+        event.participants = event.participants.filter(p => p !== participant);
         await event.save();
 
-        res.status(200).json(event);
+        return res.status(200).json({ message: 'Left event successfully', event });
+
     } catch (error) {
         console.error(error);
-        res.status(400).json({ error: 'Error updating event' });
+        res.status(400).json({ error: 'Error leaving event' });
     }
 });
 
