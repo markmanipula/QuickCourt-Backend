@@ -1,5 +1,10 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
+interface IParticipant {
+    name: string;    // Name of the participant
+    paid: boolean;   // Boolean to track if the user has paid
+}
+
 interface IEvent extends Document {
     title: string;
     organizer: string;
@@ -8,7 +13,7 @@ interface IEvent extends Document {
     time: string;
     cost: number;
     maxParticipants: number;
-    participants: string[]; // Array of userIds
+    participants: IParticipant[]; // Array of participant objects with name, and paid status
     details: string;
     visibility: 'public' | 'invite-only';
     passcode?: string; // Passcode only for invite-only events
@@ -22,7 +27,13 @@ const eventSchema: Schema<IEvent> = new Schema({
     time: { type: String, required: true },
     cost: { type: Number, default: 0 },
     maxParticipants: { type: Number, required: true },
-    participants: { type: [String], default: [] },
+    participants: {
+        type: [{
+            name: { type: String, required: true },
+            paid: { type: Boolean, default: false }, // Default to false (not paid)
+        }],
+        default: [],
+    },
     details: { type: String, default: "" },
     visibility: { type: String, enum: ['public', 'invite-only'], default: 'public', required: true },
     passcode: { type: String, default: null } // Only applies if visibility = 'invite-only'

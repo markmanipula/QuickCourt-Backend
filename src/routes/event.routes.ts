@@ -24,7 +24,7 @@ router.post('/', async (req: Request, res: Response) => {
             cost,
             maxParticipants,
             details,
-            participants: [organizer], // Initialize participants array with the organizer
+            participants: [{ name: organizer, paid: false }], // Initialize participants array with the organizer
             visibility: visibility || 'public',
             passcode: visibility === 'invite-only' ? generatePasscode() : undefined // Generate passcode if invite-only
         });
@@ -40,8 +40,7 @@ router.post('/', async (req: Request, res: Response) => {
 // @ts-ignore
 router.post('/:id/join', async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { participant, passcode } = req.body; // Passcode required for invite-only events
-    console.log('Request body:', req.body); // Log incoming request body
+    const { participant, passcode } = req.body; // Expecting participant's name and optional passcode
     try {
         const event = await Event.findById(id);
 
@@ -49,17 +48,12 @@ router.post('/:id/join', async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        if (event.visibility === 'invite-only') {
-            if (!passcode) {
-                return res.status(403).json({ error: 'Passcode required to join this event' });
-            }
-
-            if (passcode !== event.passcode) {
-                return res.status(403).json({ error: 'Invalid passcode' });
-            }
+        if (event.visibility === 'invite-only' && passcode !== event.passcode) {
+            return res.status(403).json({ error: 'Invalid passcode' });
         }
 
-        if (event.participants.includes(participant)) {
+        // Check if participant already exists
+        if (event.participants.some(p => p.name === participant)) {
             return res.status(400).json({ error: 'You are already a participant' });
         }
 
@@ -67,7 +61,8 @@ router.post('/:id/join', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'Event is full' });
         }
 
-        event.participants.push(participant);
+        // Add the new participant
+        event.participants.push({ name: participant, paid: false });
         await event.save();
 
         res.status(200).json({ message: 'Joined event successfully', event });
@@ -78,7 +73,7 @@ router.post('/:id/join', async (req: Request, res: Response) => {
     }
 });
 
-// Edit Event (Handles visibility and passcode updates)
+// Edit Event
 // @ts-ignore
 router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -91,12 +86,10 @@ router.put('/:id', async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        // If changing from public → invite-only, generate a passcode
+        // Update properties if provided
         if (visibility === 'invite-only' && event.visibility === 'public') {
             event.passcode = generatePasscode();
         }
-
-        // If changing from invite-only → public, remove the passcode
         if (visibility === 'public' && event.visibility === 'invite-only') {
             event.passcode = undefined;
         }
@@ -158,11 +151,14 @@ router.post('/:id/leave', async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        if (!event.participants.includes(participant)) {
+        // Check if the participant is in the event
+        const participantIndex = event.participants.findIndex(p => p.name === participant);
+        if (participantIndex === -1) {
             return res.status(400).json({ error: 'You are not a participant in this event' });
         }
 
-        event.participants = event.participants.filter(p => p !== participant);
+        // Remove the participant
+        event.participants.splice(participantIndex, 1);
         await event.save();
 
         return res.status(200).json({ message: 'Left event successfully', event });
