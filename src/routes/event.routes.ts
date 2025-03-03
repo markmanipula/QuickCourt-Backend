@@ -113,6 +113,37 @@ router.put('/:id', async (req: Request, res: Response) => {
     }
 });
 
+// Toggle Paid Status for a Participant
+// @ts-ignore
+router.put('/:id/participants/:participantName/toggle-paid', async (req: Request, res: Response) => {
+    const { id, participantName } = req.params;
+
+    try {
+        const event = await Event.findById(id);
+
+        if (!event) {
+            return res.status(404).json({ error: 'Event not found' });
+        }
+
+        // Find the participant
+        const participant = event.participants.find(p => p.name === participantName);
+        if (!participant) {
+            return res.status(404).json({ error: 'Participant not found' });
+        }
+
+        // Toggle the 'paid' status
+        participant.paid = !participant.paid;
+
+        await event.save();
+
+        return res.status(200).json({ message: `Participant's payment status updated to ${participant.paid ? 'Paid' : 'Not Paid'}`, event });
+
+    } catch (error) {
+        console.error(error);
+        res.status(400).json({ error: 'Error toggling payment status' });
+    }
+});
+
 // Get all Events
 router.get('/', async (req: Request, res: Response) => {
     try {
