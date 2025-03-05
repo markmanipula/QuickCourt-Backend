@@ -41,6 +41,7 @@ router.post('/', async (req: Request, res: Response) => {
 router.post('/:id/join', async (req: Request, res: Response) => {
     const { id } = req.params;
     const { participant, passcode } = req.body; // Expecting participant's name and optional passcode
+
     try {
         const event = await Event.findById(id);
 
@@ -57,11 +58,19 @@ router.post('/:id/join', async (req: Request, res: Response) => {
             return res.status(400).json({ error: 'You are already a participant' });
         }
 
+        // Check if the event is full
         if (event.participants.length >= event.maxParticipants) {
-            return res.status(400).json({ error: 'Event is full' });
+            // Add participant to the waitlist if event is full
+            if (event.waitlist.some(w => w.name === participant)) {
+                return res.status(400).json({ error: 'You are already on the waitlist' });
+            }
+
+            event.waitlist.push({ name: participant, paid: false });
+            await event.save();
+            return res.status(200).json({ message: 'Event is full, added to waitlist', event });
         }
 
-        // Add the new participant
+        // Add the new participant directly to participants if there is space
         event.participants.push({ name: participant, paid: false });
         await event.save();
 
@@ -89,8 +98,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         // Update properties if provided
         if (visibility === 'invite-only' && event.visibility === 'public') {
             event.passcode = generatePasscode();
-        }
-        if (visibility === 'public' && event.visibility === 'invite-only') {
+        } else if (visibility === 'public' && event.visibility === 'invite-only') {
             event.passcode = undefined;
         }
 
@@ -190,6 +198,15 @@ router.post('/:id/leave', async (req: Request, res: Response) => {
 
         // Remove the participant
         event.participants.splice(participantIndex, 1);
+
+        // Check if there are any people waiting in the waitlist to move to participants
+        if (event.waitlist.length > 0) {
+            const nextInLine = event.waitlist.shift(); // Get the first person in the waitlist
+            if (nextInLine) {
+                event.participants.push(nextInLine); // Move them to participants
+            }
+        }
+
         await event.save();
 
         return res.status(200).json({ message: 'Left event successfully', event });
