@@ -190,19 +190,28 @@ router.post('/:id/leave', async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Event not found' });
         }
 
-        // Check if the participant is in the event
+        // Check if the participant is in the event participants
         const participantIndex = event.participants.findIndex(p => p.name === participant);
         if (participantIndex === -1) {
-            return res.status(400).json({ error: 'You are not a participant in this event' });
+            // If not a participant, check if on waitlist
+            const waitlistIndex = event.waitlist.findIndex(w => w.name === participant);
+            if (waitlistIndex !== -1) { // Found in the waitlist
+                // Remove from waitlist
+                event.waitlist.splice(waitlistIndex, 1);
+                await event.save();
+                return res.status(200).json({ message: 'Left waitlist successfully', event });
+            }
+            // If is neither a participant nor on waitlist
+            return res.status(400).json({ error: 'You are not a participant or waitlisted for this event' });
         }
 
-        // Remove the participant
+        // Remove the participant from participants
         event.participants.splice(participantIndex, 1);
 
-        // Check if there are any people waiting in the waitlist to move to participants
+        // Promote the first attendee from the waitlist if available
         if (event.waitlist.length > 0) {
             const nextInLine = event.waitlist.shift(); // Get the first person in the waitlist
-            if (nextInLine) {
+            if (nextInLine) { // Ensure nextInLine is defined
                 event.participants.push(nextInLine); // Move them to participants
             }
         }
