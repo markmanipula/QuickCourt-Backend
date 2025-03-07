@@ -95,6 +95,8 @@ router.put('/:id', async (req: Request, res: Response) => {
             return res.status(404).json({ error: 'Event not found' });
         }
 
+        const previousMaxParticipants = event.maxParticipants;
+
         // Update properties if provided
         if (visibility === 'invite-only' && event.visibility === 'public') {
             event.passcode = generatePasscode();
@@ -111,6 +113,15 @@ router.put('/:id', async (req: Request, res: Response) => {
         event.maxParticipants = maxParticipants || event.maxParticipants;
         event.details = details || event.details;
         event.visibility = visibility || event.visibility;
+
+        // Handle automatic movement from waitlist
+        if (maxParticipants > previousMaxParticipants) {
+            const availableSpots = maxParticipants - event.participants.length;
+            if (availableSpots > 0 && event.waitlist.length > 0) {
+                const toMove = event.waitlist.splice(0, availableSpots); // Take up to available spots
+                event.participants.push(...toMove); // Move from waitlist to participants
+            }
+        }
 
         await event.save();
 
