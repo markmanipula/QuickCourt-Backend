@@ -12,15 +12,14 @@ const generatePasscode = (): string => {
 
 // Create Event
 router.post('/', async (req: Request, res: Response) => {
-    const { title, organizer, location, date, time, cost, maxParticipants, details, visibility } = req.body;
+    const { title, organizer, location, dateTime, cost, maxParticipants, details, visibility } = req.body;
 
     try {
         const newEvent = new Event({
             title,
             organizer,
             location,
-            date,
-            time,
+            dateTime, // Expecting the full DateTime object now
             cost,
             maxParticipants,
             details,
@@ -86,7 +85,7 @@ router.post('/:id/join', async (req: Request, res: Response) => {
 // @ts-ignore
 router.put('/:id', async (req: Request, res: Response) => {
     const { id } = req.params;
-    const { title, organizer, location, date, time, cost, maxParticipants, details, visibility } = req.body;
+    const { title, organizer, location, dateTime, cost, maxParticipants, details, visibility } = req.body;
 
     try {
         const event = await Event.findById(id);
@@ -107,8 +106,7 @@ router.put('/:id', async (req: Request, res: Response) => {
         event.title = title || event.title;
         event.organizer = organizer || event.organizer;
         event.location = location || event.location;
-        event.date = date || event.date;
-        event.time = time || event.time;
+        event.dateTime = dateTime || event.dateTime; // Updated here
         event.cost = cost || event.cost;
         event.maxParticipants = maxParticipants || event.maxParticipants;
         event.details = details || event.details;

@@ -1,8 +1,8 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 interface IParticipant {
-    name: string;    // Name of the participant
-    paid: boolean;   // Boolean to track if the user has paid
+    name: string; // Name of the participant
+    paid: boolean; // Boolean to track if the user has paid
 }
 
 // Define the participant schema separately
@@ -16,8 +16,7 @@ interface IEvent extends Document {
     title: string;
     organizer: string;
     location: string;
-    date: Date;
-    time: string;
+    dateTime: Date; // Changed from separate date and time fields to a single dateTime field
     cost: number;
     maxParticipants: number;
     participants: IParticipant[]; // Array of participant objects with name, and paid status
@@ -31,8 +30,7 @@ const eventSchema: Schema<IEvent> = new Schema({
     title: { type: String, required: true },
     organizer: { type: String, required: true },
     location: { type: String, required: true },
-    date: { type: Date, required: true },
-    time: { type: String, required: true },
+    dateTime: { type: Date, required: true }, // Use single dateTime field
     cost: { type: Number, default: 0 },
     maxParticipants: { type: Number, required: true },
     participants: {
